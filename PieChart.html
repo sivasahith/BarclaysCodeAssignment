@@ -1,0 +1,104 @@
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+</head>
+<body>
+        
+      <input type="text" class="input" id="repname" placeholder="username/repository_name" />
+      <button class="button" id="pigen">GetGraph</button>
+      <div id="piechart" style="width: 900px; height: 500px;">
+
+   <script>
+
+
+    var GeneratePieChart = { //http://localhost:8080/SpringRestExample/rest/pieChartData
+    	gitAddress : "https://api.github.com/repos/spring-projects/spring-boot/stats/commit_activity",
+        months : ['Jan','Feb','March','April','May', 'June', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+   	    GitcommitsByMonth : {},
+		lastDate: (function(){
+			var now = new Date();
+            return new Date(now.setMonth(now.getMonth() - 11));
+		}()),   
+   	    drawChart : function(){
+   	    	console.log(this.gitAddress);
+   	    	 $.get(this.gitAddress, (response)=> {
+                   this.convertToMonthWise(response);
+                   this.generateGraph(this.GitcommitsByMonth);
+               }).fail(function() {
+				    alert( "Invalid repository details" );
+				  });	
+   	    },
+        gitRepoAddr: function(repName) {
+          this.gitAddress = `https://api.github.com/repos/${repName}/stats/commit_activity`;
+        },
+		daysInMonth : function(month,year) {
+    		return new Date(year, month, 0).getDate();
+		},
+        convertToMonthWise : function(response){
+			  
+            	let prevMonth = 0;
+            	for(let i =0; i < response.length; i++) {
+            		let week = response[i];
+            		let tmpDate = new Date(week.week*1000);
+            		
+            		let month = tmpDate.getMonth();
+					
+						for(let i=0;i<7;i++){
+							tmpDate.setDate(tmpDate.getDate()+1);
+							if(tmpDate<this.lastDate) {
+								continue;
+							}	
+							month = this.months[tmpDate.getMonth()];
+							console.log(week.days[i])
+							if(this.GitcommitsByMonth[month]){
+								this.GitcommitsByMonth[month] = this.GitcommitsByMonth[month] + (week.days[i]);
+							}else{
+								this.GitcommitsByMonth[month] = (week.days[i]);
+							}      
+						}				            		
+            	}
+				//console.log(this.GitcommitsByMonth);
+        },
+        generateGraph : function (argument) {
+       	    var data = new google.visualization.DataTable();
+			// Declare columns
+			data.addColumn('string', 'Month');
+			data.addColumn('number', 'Commits');
+			var rows = [];
+			for(prop in argument) {
+				rows.push([ prop , argument[prop] ])
+				console.log(rows);
+			}
+
+            data.addRows(rows);
+
+	        var options = {
+	          title: 'Commit history',
+	          legend: { position: 'top' },
+	           pointSize: 8
+	        };
+
+	        var chart = new google.visualization.PieChart(document.getElementById('piechart'));
+	        chart.draw(data, options);
+       },
+          clearGitcommitsByMonth : function(){
+       	  this.GitcommitsByMonth = {};
+       }         
+    }
+
+       $(function(){
+
+       		google.charts.load('current', {'packages':['corechart']});
+      		google.charts.setOnLoadCallback(GeneratePieChart.drawChart.bind(GeneratePieChart));
+            $("#pigen").click(()=>{
+            	GeneratePieChart.clearGitcommitsByMonth();
+            	GeneratePieChart.gitRepoAddr($("#repname").val());
+            	GeneratePieChart.drawChart();
+      		})
+
+       });
+   </script>
+
+</body>
+</html>
